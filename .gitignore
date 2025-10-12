@@ -1,0 +1,22 @@
+# Python stuff
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+
+# Environment files
+.env
+.service_account.json
+.memory.json
+.streamlit/secrets.toml
+
+# VS Code settings
+.vscode/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
