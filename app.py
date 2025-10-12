@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import html
 from dotenv import load_dotenv
 import os
+from prompts import get_echo_prompt
 from memory import (
     add_user,
     check_user,
@@ -116,11 +117,7 @@ html, body, [class*="stApp"] {
 }
 .glass {
     background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-    border: 1px solid var(--glass-border);
-    backdrop-filter: blur(8px) saturate(1.2);
     border-radius: 14px;
-    padding: 18px;
-    box-shadow: 0 6px 18px rgba(2,6,23,0.6);
 }
 .center-card {
     max-width:900px;
@@ -227,7 +224,7 @@ if not st.session_state.user_id:
     col_left, col_center, col_right = st.columns([1, 2, 1])
     with col_center:
         st.markdown('<div class="glass center-card">', unsafe_allow_html=True)
-        st.markdown("<h2 style='margin:0 0 6px 0;'>Welcome to <strong>Echo</strong></h2>", unsafe_allow_html=True)
+        st.markdown("<h2>Welcome to <strong>Echo</strong></h2>", unsafe_allow_html=True)
         st.markdown("<p style='margin:0 0 14px 0; color:#9fb0c9;'>Dark mode enabled. Secure private chats. Salted passwords. No nonsense.</p>", unsafe_allow_html=True)
         tabs = st.tabs(["Login", "Register", "Quick Demo"])
         # Login tab
@@ -331,19 +328,52 @@ else:
     # --- END OF CORRECTED LAYOUT ---
 
     # Logic (remains the same)
+    # ------------------- MESSAGE PROCESSING -------------------
     if send and user_msg.strip():
-        content = user_msg.strip()
-        add_message(active_convo, "user", content, "user")
-        st.session_state.message_to_process = content
-        st.rerun()
+        # Save user message to session state
+        st.session_state.message_to_process = user_msg.strip()
 
-
+    # Process the message if there’s one pending
     if st.session_state.message_to_process:
-        message_content = st.session_state.message_to_process
+        user_msg = st.session_state.message_to_process
         st.session_state.message_to_process = None
-        assistant_reply = generate_response(message_content)
-        add_message(active_convo, "assistant", assistant_reply, "assistant")
+
+        # 1️⃣ Add user message to chat
+        add_message(active_convo, "user", user_msg, "user")
+
+        # 2️⃣ Prepare context from last 10 messages
+        messages = get_messages(active_convo)
+        context_text = " ".join([m["content"] for m in messages[-10:]])
+
+        # 3️⃣ Build the prompt
+        prompt_text = get_echo_prompt(user_msg, context_text)
+
+        # 4️⃣ Call Echo API
+        raw_json = generate_response(prompt_text)
+        st.text(f"DEBUG: {raw_json}")  # <-- debug raw output
+
+        # 5️⃣ Parse JSON safely
+        import json
+        try:
+            data = json.loads(raw_json)
+            reply = data.get("response", raw_json)  # fallback to raw text
+        except json.JSONDecodeError:
+            reply = raw_json  # fallback to raw text if JSON fails
+
+        # 6️⃣ Add Echo's reply to chat
+        add_message(active_convo, "assistant", reply, "assistant")
+
+        # 7️⃣ Trigger a single rerun to refresh the chat UI
         st.rerun()
+
+    # ------------------- AUTO-SCROLL -------------------
+    st.markdown("""
+    <script>
+    const chatContainer = document.getElementById("chat-container");
+    if (chatContainer) { chatContainer.scrollTop = chatContainer.scrollHeight; }
+    </script>
+    """, unsafe_allow_html=True)
+
 
     # Auto-scroll (target the correct container)
     st.markdown("""
