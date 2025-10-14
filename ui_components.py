@@ -5,12 +5,10 @@ from memory import (
     remember, recall, create_conversation, get_conversations,
     update_password, clear_conversation, delete_conversation
 )
-
 # ---------------------
 # Helper utilities
 # ---------------------
 META_SCOPE = "meta"  # we store per-conversation metadata under this scope
-
 def _get_meta(user_id, convo_id):
     """Return dict metadata for a convo (pinned, archived, title_override)."""
     raw = recall(user_id, META_SCOPE, f"convo_meta_{convo_id}")
@@ -43,7 +41,6 @@ def rename_conversation(user_id, convo_id, new_title):
 def get_display_title(user_id, convo_id, original_title):
     meta = _get_meta(user_id, convo_id)
     return meta.get("title") or original_title
-
 # ---------------------
 # UI: Sidebar (Cleaned Up)
 # ---------------------
@@ -80,15 +77,35 @@ def show_sidebar(active_conversation_id):
         <style>
             [data-testid="stSidebar"][aria-expanded="true"] { width: 340px; }
             .glass {
-                background: rgba(255,255,255,0.018); border: 1px solid rgba(255,255,255,0.06);
-                backdrop-filter: blur(10px) saturate(1.2); border-radius: 14px;
-                padding: 14px; box-shadow: 0 6px 22px rgba(2,6,23,0.6);
-                height: 95vh; display: flex; flex-direction: column;
             }
             .sidebar-header { font-size:20px; font-weight:700; margin-bottom:10px; }
             .conversation-list { flex-grow:1; overflow-y:auto; margin-bottom:8px; padding-right:6px; }
-            [data-testid="stPopover"] > button::after { content: none !important; }
+            /* Remove the popover arrow completely */
+            [data-testid="stPopover"] > button::after,
+            [data-testid="stPopover"] > button svg {
+                display: none !important;
+            }
             [data-testid="stPopover"] > button { font-size: 1.2rem; }
+            button[kind="primary"] {
+            border-radius: 8px;
+            background-color: #4a90e2;
+            color: white;
+            font-weight: 500;
+        }
+        button[kind="secondary"] {
+            border-radius: 8px;
+            background-color: transparent;
+            color: #ccc;
+            border: 1px solid #555;
+        }
+        button:hover {
+            opacity: 0.85;
+        }
+        .conversation-list button {
+        margin-bottom: 6px;
+        text-align: left;
+        padding: 6px 10px;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -104,7 +121,7 @@ def show_sidebar(active_conversation_id):
     active_convo_key = f"active_{current_scope}_convo_id"
 
     # ------- New chat -------
-    if st.sidebar.button("➕ New Chat", use_container_width=True):
+    if st.sidebar.button("New Chat", use_container_width=True):
         count = len(get_conversations(user_id, current_scope)) + 1
         convo_id = create_conversation(user_id, f"Chat #{count}", current_scope)
         st.session_state[active_convo_key] = convo_id
