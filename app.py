@@ -13,6 +13,10 @@ from memory import (
     clear_conversation
 )
 from ui_components import show_sidebar
+# load custom styles (UI only)
+# load custom styles (UI only)
+if os.path.exists("ui_styles.css"):
+    st.markdown(f"<style>{open('ui_styles.css').read()}</style>", unsafe_allow_html=True)
 
 # --- LOAD API KEY FROM .env FILE ---
 load_dotenv()
@@ -99,7 +103,8 @@ else:
 
     # --- MAIN PAGE UI & CHAT DISPLAY ---
     st.title(get_conversation_title(active_conversation_id))
-    
+    st.markdown('<div class="app-subtext">Echo listens. Say anything — you’re safe here.</div>', unsafe_allow_html=True)
+
     if GOOGLE_API_KEY:
         genai.configure(api_key=GOOGLE_API_KEY)
         model = genai.GenerativeModel('gemini-pro-latest')
@@ -121,24 +126,14 @@ else:
         with st.chat_message("assistant", avatar="🤖"):
             with st.spinner("Thinking..."):
                 try:
-                    # --- THIS IS THE CORRECTED CONTEXT PREPARATION ---
-                    public_strengths = recall(st.session_state.user_id, "public", "strengths") or []
-                    public_facts = recall(st.session_state.user_id, "public", "facts") or []
-                    
-                    if st.session_state.private_mode:
-                        private_strengths = recall(st.session_state.user_id, "private", "strengths") or []
-                        private_facts = recall(st.session_state.user_id, "private", "facts") or []
-                        all_strengths = list(set(public_strengths + private_strengths))
-                        all_facts = list(set(public_facts + private_facts))
-                    else:
-                        all_strengths = public_strengths
-                        all_facts = public_facts
-                    
+                    # The AI call is now safely inside the try block
+                    user_strengths = recall(st.session_state.user_id, "public", "strengths") or []
+                    user_facts = recall(st.session_state.user_id, current_scope, "facts") or []
                     context = ""
-                    if all_strengths:
-                        context += f"- User's known strengths: {', '.join(all_strengths)}\n"
-                    if all_facts:
-                        context += f"- Key facts the user has shared: {', '.join(all_facts)}\n"
+                    if user_strengths:
+                        context += f"- User's known strengths: {', '.join(user_strengths)}\n"
+                    if user_facts:
+                        context += f"- Key facts the user has shared: {', '.join(user_facts)}\n"
 
                     smart_prompt = get_echo_prompt(last_prompt, context)
                     
@@ -148,33 +143,49 @@ else:
                     # Robust JSON parser
                     start = raw_text.find('{')
                     end = raw_text.rfind('}') + 1
+                    
                     if start != -1 and end != -1:
                         clean_json_str = raw_text[start:end]
                         json_response = json.loads(clean_json_str)
                         response_text = json_response["response"]
                         strengths = json_response.get("strengths", [])
-                        facts = json_response.get("facts_learned", []) # Correctly gets facts
+                        facts = json_response.get("facts_learned", [])
                         
+                        # --- Handle the response ---
                         if response_text == "INTERRUPT":
-                            interrupt_message = "It sounds like your mind is spinning..."
+                            interrupt_message = "It sounds like your mind is spinning. Let's try a 30-second pause. I want you to look away from the screen and name one thing in the room that is blue. Take a deep breath."
                             add_message(active_conversation_id, "assistant", interrupt_message, "🤖")
                         else:
-                            # --- THIS IS THE RESTORED MEMORY LOGIC ---
+                            # --- MEMORY LOGIC ---
                             if strengths:
                                 remember(st.session_state.user_id, current_scope, "strengths", strengths)
                             if facts:
                                 remember(st.session_state.user_id, current_scope, "facts", facts)
                             
                             add_message(active_conversation_id, "assistant", response_text, "🤖")
+
+                            # --- NEW: INTELLIGENT CHAT NAMING LOGIC ---
+                            # Check if this is the very first exchange in a newly created chat
+                            current_title = get_conversation_title(active_conversation_id)
+                            if (current_title == "New Chat" or current_title.startswith("Chat #")) and len(get_messages(active_conversation_id)) == 2:
+                                title_prompt = f"Summarize the following exchange in 3-5 words to be a chat title. Be concise and relevant. USER: '{last_prompt}' ASSISTANT: '{response_text}'"
+                                title_response = model.generate_content(title_prompt).text
+                                # Clean up the title (remove quotes, etc.) and update the database
+                                new_title = title_response.strip().replace('"', '')
+                                if new_title: # Ensure title is not empty
+                                    update_conversation_title(active_conversation_id, new_title)
+
                     else: 
+                        # Fallback if no JSON is found
                         add_message(active_conversation_id, "assistant", raw_text, "🤖")
 
                 except Exception as e:
-                    error_message = "I'm having a little trouble connecting. Please try again in a moment."
+                    # This now handles errors from the AI call AND from parsing
+                    error_message = "I'm having a little trouble connecting to my brain right now. Please try again in a moment."
                     add_message(active_conversation_id, "assistant", error_message, "🤖")
-                    print(f"--- ERROR DURING AI CALL/PARSING ---")
+                    print(f"--- An error occurred during AI call or parsing ---")
                     print(f"Error: {e}")
-                    print("-----------------------------------")
+                    print("--------------------------------------------------")
         st.rerun()
 
     # Handle the user's new input at the very end
