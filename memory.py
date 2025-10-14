@@ -129,14 +129,6 @@ def get_messages(conversation_id):
     conn.close()
     return messages
 
-
-def update_conversation_title(conversation_id, new_title):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE conversations SET title = ? WHERE id = ?", (new_title, conversation_id))
-    conn.commit()
-    conn.close()
-
 def get_conversation_title(conversation_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -180,5 +172,13 @@ def delete_conversation(conversation_id):
     cursor.execute("DELETE FROM messages WHERE conversation_id = ?", (conversation_id,))
     # Then, delete the conversation itself
     cursor.execute("DELETE FROM conversations WHERE id = ?", (conversation_id,))
+    conn.commit()
+    conn.close()
+
+def update_conversation_title(conversation_id, new_title):
+    """Updates the title of a specific conversation."""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE conversations SET title = ? WHERE id = ?", (new_title, conversation_id))
     conn.commit()
     conn.close()

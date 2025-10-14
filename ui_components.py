@@ -5,12 +5,10 @@ from memory import (
     remember, recall, create_conversation, get_conversations,
     update_password, clear_conversation, delete_conversation
 )
-
 # ---------------------
 # Helper utilities
 # ---------------------
 META_SCOPE = "meta"  # we store per-conversation metadata under this scope
-
 def _get_meta(user_id, convo_id):
     """Return dict metadata for a convo (pinned, archived, title_override)."""
     raw = recall(user_id, META_SCOPE, f"convo_meta_{convo_id}")
@@ -43,7 +41,6 @@ def rename_conversation(user_id, convo_id, new_title):
 def get_display_title(user_id, convo_id, original_title):
     meta = _get_meta(user_id, convo_id)
     return meta.get("title") or original_title
-
 # ---------------------
 # UI: Sidebar (Cleaned Up)
 # ---------------------
