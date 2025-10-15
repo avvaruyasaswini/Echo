@@ -12,7 +12,7 @@ from memory import (
     update_conversation_title, delete_conversation, init_db, update_password,
     clear_conversation
 )
-from ui_components import show_sidebar
+from ui_components import show_sidebar, show_landing_page
 # load custom styles (UI only)
 # load custom styles (UI only)
 if os.path.exists("ui_styles.css"):
@@ -46,37 +46,47 @@ if "active_public_convo_id" not in st.session_state: st.session_state.active_pub
 if "active_private_convo_id" not in st.session_state: st.session_state.active_private_convo_id = None
 
 # --- AUTHENTICATION / LOGIN PAGE ---
+# --- AUTHENTICATION / LOGIN PAGE ---
 if not st.session_state.user_id:
-    # Your full login/signup page code is here
-    col_left, col_center, col_right = st.columns([1, 2, 1])
-    with col_center:        
-        st.title("Echo - We Listen, We Don't Judge")
-        st.subheader("Welcome! Please log in or create an account to continue.")
-        tabs = st.tabs(["Login", "Register"])
-        with tabs[0]:
-            with st.form("login_form"):
-                user = st.text_input("Username", key="login_user")
-                pw = st.text_input("Password", type="password", key="login_pw")
-                if st.form_submit_button("Log in"):
-                    uid = check_user(user.strip(), pw)
-                    if uid:
-                        st.session_state.user_id = uid
-                        st.session_state.username = user.strip()
-                        st.rerun()
-                    else:
-                        st.error("Wrong username or password.")
-        with tabs[1]:
-            with st.form("register_form"):
-                r_user = st.text_input("Pick a username", key="reg_user")
-                r_pw = st.text_input("Pick a password", type="password", key="reg_pw")
-                if st.form_submit_button("Create account"):
-                    if not r_user or not r_pw:
-                        st.warning("Please fill all fields.")
-                    else:
-                        if add_user(r_user.strip(), r_pw):
-                            st.success("Account created. You can now log in.")
+    # Initialize a state to track if we should show the login form
+    if "show_login" not in st.session_state:
+        st.session_state.show_login = False
+
+    # If the user hasn't clicked "Get Started" on the landing page yet, show the landing page.
+    if not st.session_state.show_login:
+        show_landing_page()
+    # Otherwise, show the familiar login/signup forms.
+    else:
+        # This is your existing login form code, now just called from here
+        col_left, col_center, col_right = st.columns([1, 2, 1])
+        with col_center:
+            st.title("Echo - We Listen, We Don't Judge")
+            st.subheader("Welcome! Please log in or create an account to continue.")
+            tabs = st.tabs(["Login", "Register"])
+            with tabs[0]:
+                with st.form("login_form"):
+                    user = st.text_input("Username", key="login_user")
+                    pw = st.text_input("Password", type="password", key="login_pw")
+                    if st.form_submit_button("Log in"):
+                        uid = check_user(user.strip(), pw)
+                        if uid:
+                            st.session_state.user_id = uid
+                            st.session_state.username = user.strip()
+                            st.rerun()
                         else:
-                            st.error("Username already exists.")
+                            st.error("Wrong username or password.")
+            with tabs[1]:
+                with st.form("register_form"):
+                    r_user = st.text_input("Pick a username", key="reg_user")
+                    r_pw = st.text_input("Pick a password", type="password", key="reg_pw")
+                    if st.form_submit_button("Create account"):
+                        if not r_user or not r_pw:
+                            st.warning("Please fill all fields.")
+                        else:
+                            if add_user(r_user.strip(), r_pw):
+                                st.success("Account created. You can now log in.")
+                            else:
+                                st.error("Username already exists.")
 else:
     # --- MAIN APP, SHOWN ONLY AFTER LOGIN ---
 
