@@ -261,3 +261,23 @@ def show_sidebar(active_conversation_id):
         st.rerun()
 
     st.sidebar.markdown("</div>", unsafe_allow_html=True)
+
+def show_landing_page():
+    """
+    Displays a welcoming landing page for new users.
+    """
+    st.title("Welcome to Echo")
+    st.subheader("Your Private, AI-Powered Companion for Mental Well-being")
+    
+    st.markdown("""
+    In the quiet moments, when thoughts are loud and the world feels heavy, Echo is here to listen. 
+    This is a safe, non-judgmental space for you to explore your feelings, find clarity, and build resilience. 
+    Your conversations are private, your data is yours, and your well-being is our only priority.
+    """)
+    
+    # Use columns to center the button
+    col1, col2, col3 = st.columns([2, 1, 2])
+    with col2:
+        if st.button("Get Started", use_container_width=True, type="primary"):
+            st.session_state.show_login = True
+            st.rerun()
